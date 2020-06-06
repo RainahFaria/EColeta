@@ -2,12 +2,13 @@ import React, { useEffect, useState, ChangeEvent, FormEvent } from 'react';
 import { FiArrowDownLeft } from 'react-icons/fi';
 import { Link, useHistory } from 'react-router-dom';
 import { Map, TileLayer, Marker } from 'react-leaflet';
-import api from '../../services/api';
+import { LeafletMouseEvent } from 'leaflet';
 import axios from 'axios';
 
+import api from '../../services/api';
 import './styles.css';
 import logo from '../../assets/logo.svg';
-import { LeafletMouseEvent } from 'leaflet';
+import Dropzone from '../../components/Dropzone';
 
 interface Item {
     id: number;
@@ -27,8 +28,8 @@ const CreatePoint = () => {
     const [items, setItems] = useState<Item[]>([]);
     const [ufs, setUfs] = useState<string[]>([]);
     const [cities, setCities] = useState<string[]>([]);
-    
-    const [initialPosition, setInitialPosition] = useState<[number, number]>([0,0]);
+
+    const [initialPosition, setInitialPosition] = useState<[number, number]>([0, 0]);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -39,7 +40,8 @@ const CreatePoint = () => {
     const [selectedUf, setSelectedUf] = useState('0');
     const [selectedCity, setSelectedCity] = useState('0');
     const [selectedItems, setSelectedItems] = useState<number[]>([]);
-    const [selectedMapPosition, setSelectedMapPosition] = useState<[number, number]>([0,0]);
+    const [selectedMapPosition, setSelectedMapPosition] = useState<[number, number]>([0, 0]);
+    const [selectedFile, setSelectedFile] = useState<File>();
 
     const history = useHistory();
 
@@ -84,7 +86,7 @@ const CreatePoint = () => {
     function handleSelectCity(event: ChangeEvent<HTMLSelectElement>) {
         const city = event.target.value;
         setSelectedCity(city);
-    }    
+    }
 
     function handleSelectMapCity(event: LeafletMouseEvent) {
         setSelectedMapPosition([
@@ -92,7 +94,7 @@ const CreatePoint = () => {
             event.latlng.lng
         ]);
     }
-    
+
     function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
         const { name, value } = event.target;
         setFormData({ ...formData, [name]: value });
@@ -105,7 +107,7 @@ const CreatePoint = () => {
             const filteredItems = selectedItems.filter(item => item !== id);
             setSelectedItems(filteredItems);
         } else {
-            setSelectedItems([ ...selectedItems, id ]);
+            setSelectedItems([...selectedItems, id]);
         }
     }
 
@@ -113,20 +115,24 @@ const CreatePoint = () => {
         event.preventDefault();
 
         const { name, email, whatsapp } = formData;
-        const [ latitude, longitude ] = selectedMapPosition;
+        const [latitude, longitude] = selectedMapPosition;
         const uf = selectedUf;
         const city = selectedCity;
         const items = selectedItems;
 
-        const data = {
-            name, 
-            email, 
-            whatsapp,
-            latitude, 
-            longitude,
-            uf,
-            city,
-            items
+        const data = new FormData();
+
+        data.append('name', name);
+        data.append('email', email);
+        data.append('whatsapp', whatsapp);
+        data.append('latitude', String(latitude));
+        data.append('longitude', String(longitude));
+        data.append('uf', uf);
+        data.append('city', city);
+        data.append('items', items.join(','));
+        
+        if (selectedFile) {
+            data.append('image', selectedFile);
         }
 
         await api.post('points', data);
@@ -148,6 +154,8 @@ const CreatePoint = () => {
 
             <form onSubmit={handleSubmit}>
                 <h1>Cadastro do <br /> ponto de coleta</h1>
+
+                <Dropzone onFileUploaded={setSelectedFile} />
 
                 <fieldset>
                     <legend>
@@ -171,7 +179,7 @@ const CreatePoint = () => {
                                 type="email"
                                 name="email"
                                 id="email"
-                                onChange={handleInputChange}                                
+                                onChange={handleInputChange}
                             />
                         </div>
 
@@ -180,7 +188,7 @@ const CreatePoint = () => {
                             <input
                                 type="text"
                                 name="whatsapp"
-                                id="whatsapp"                                
+                                id="whatsapp"
                                 onChange={handleInputChange}
                             />
                         </div>
@@ -216,7 +224,7 @@ const CreatePoint = () => {
                                 ))}
                             </select>
                         </div>
-                    
+
                         <div className="field">
                             <label htmlFor="city">Cidade</label>
                             <select
@@ -242,10 +250,10 @@ const CreatePoint = () => {
 
                     <ul className="items-grid">
                         {items.map(item => (
-                            <li 
-                            key={item.id} 
-                            onClick={() => handleSelectItem(item.id)}
-                            className={selectedItems.includes(item.id) ? 'selected' : ''}
+                            <li
+                                key={item.id}
+                                onClick={() => handleSelectItem(item.id)}
+                                className={selectedItems.includes(item.id) ? 'selected' : ''}
                             >
                                 <img src={item.imageUrl} alt={item.title} />
                                 <span>{item.title}</span>
